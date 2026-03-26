@@ -1,22 +1,42 @@
+
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { transformMarkdownLinks } from '$lib/transformMarkdownLinks';
 
-  const sampleInput = `# 微博 Markdown 示例\n\n普通链接：\n[微博热搜](https://t.cn/A6abcde)\n\n多个链接：\n[甲](https://t.cn/A6foo)[乙](https://t.cn/A6bar)\n\n代码里的链接，当前规则也会处理：\n\`[代码](https://t.cn/A6code)\`\n\n\`\`\`md\n[代码块](https://t.cn/A6block)\n\`\`\`\n\n已有空格，不会重复补：\n[已有空格](https://t.cn/A6keep )\n\n图片也改： \n![封面](https://wx4.sinaimg.cn/large/demo.png ) \n\n坏输入尽量保持原样：\n[坏链](https://t.cn/A6broken\n`;
+  const sampleInput = `# 微博 Markdown 示例
+
+普通链接：
+[微博热搜](https://t.cn/A6abcde)
+
+多个链接：
+[甲](https://t.cn/A6foo)[乙](https://t.cn/A6bar)
+
+代码里的链接，当前规则也会处理：
+\`[代码](https://t.cn/A6code)\`
+
+\`\`\`md
+[代码块](https://t.cn/A6block)
+\`\`\`
+
+已有空格，不会重复补：
+[已有空格](https://t.cn/A6keep )
+
+图片也改：
+![封面](https://wx4.sinaimg.cn/large/demo.png )
+
+嵌套图片包链接，两层都会处理：
+[![使用 Vercel 部署](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/gantrol/markdown-can-do)
+
+坏输入尽量保持原样：
+[坏链](https://t.cn/A6broken`;
 
   let input = '';
   let copyText = '复制结果';
   let isCopied = false;
-  let isHydrated = false;
 
   $: output = transformMarkdownLinks(input);
 
-  onMount(() => {
-    isHydrated = true;
-  });
-
   async function copyOutput() {
-    if (!isHydrated || !output) return;
+    if (!output) return;
     try {
       await navigator.clipboard.writeText(output);
       isCopied = true;
@@ -55,7 +75,7 @@
 <div class="page-container">
   <header class="hero">
     <h1>微博 Markdown 防短链装置</h1>
-    <p class="intro">将 <code>[文字](链接)</code> 批量转换为 <code>[文字](链接 )</code>。当前规则统一处理普通链接、代码里的链接、图片链接；已有空格不重复补，坏输入尽量原样保留。</p>
+    <p class="intro">把 Markdown 里的链接、图片链接，连同嵌套写法，一并改成 <code>(链接 )</code> 这种微博更稳的格式。</p>
   </header>
 
   <main class="workspace">
@@ -66,11 +86,11 @@
           输入 Markdown
         </div>
         <div class="panel-actions">
-          <button class="btn-ghost" on:click={fillSample} title="填入示例" disabled={!isHydrated}>
+          <button class="btn-ghost" on:click={fillSample} title="填入示例">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/></svg>
             示例
           </button>
-          <button class="btn-ghost" on:click={clearAll} title="清空内容" disabled={!isHydrated}>
+          <button class="btn-ghost" on:click={clearAll} title="清空内容">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
             清空
           </button>
@@ -82,7 +102,6 @@
           placeholder="把原始 Markdown 粘贴到这里..."
           spellcheck="false"
           data-testid="input"
-          disabled={!isHydrated}
         ></textarea>
       </div>
     </div>
@@ -99,7 +118,7 @@
             class:success={isCopied}
             on:click={copyOutput}
             data-testid="copy-button"
-            disabled={!isHydrated || !output}
+            disabled={!output}
           >
             {#if isCopied}
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -117,7 +136,6 @@
           placeholder="处理后的结果会显示在这里..."
           spellcheck="false"
           data-testid="output"
-          disabled={!isHydrated}
         ></textarea>
       </div>
     </div>
@@ -130,10 +148,10 @@
     <div class="notes-content">
       <h2>处理规则</h2>
       <ul>
-        <li>普通 Markdown 链接会在结尾补一个空格。</li>
-        <li>行内代码、代码块里的链接，当前实现也会处理。</li>
-        <li>图片语法 <code>![]()</code> 现在也会补空格。</li>
-        <li>已有空格不重复补，异常格式尽量保持原样。</li>
+        <li>普通链接、图片链接，都会在结尾补一个空格。</li>
+        <li>图片包链接这类嵌套写法，会从外到里一起处理。</li>
+        <li>已有空格不会重复补，坏输入尽量保持原样。</li>
+        <li>嵌套太深时，为了稳妥会停在 48 层，更深部分原样保留。</li>
       </ul>
     </div>
   </aside>
@@ -175,7 +193,7 @@
 
   .intro {
     margin: 16px auto 0;
-    max-width: 680px;
+    max-width: 600px;
     font-size: 16px;
     line-height: 1.6;
     color: #64748b;
