@@ -2,7 +2,7 @@
 // @name         微博 Markdown 防短链装置（链接补空格）
 // @namespace    http://tampermonkey.net/
 // @version      1.0.0
-// @description  给微博编辑框加一个按钮，把 [文字](链接) 改成 [文字](链接 )，兼容 textarea 和 contenteditable
+// @description  给微博编辑框加一个按钮，把链接与图片统一改成结尾补空格，兼容 textarea 和 contenteditable
 // @author       OpenAI
 // @match        https://weibo.com/*
 // @match        https://www.weibo.com/*
@@ -65,11 +65,6 @@
     return count % 2 === 1;
   }
 
-  function isFenceStart(line) {
-    const match = line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (!match) return null;
-    return match[1][0];
-  }
 
   function parseBracketText(str, start) {
     if (str[start] !== '[') return null;
@@ -101,47 +96,26 @@
     return null;
   }
 
-  function transformInlineMarkdownLine(line) {
+  function appendTrailingSpace(dest) {
+    return /\s$/.test(dest) ? dest : `${dest} `;
+  }
+
+  function transformMarkdownLinks(input) {
+    if (!input) return input;
+
     let result = '';
     let i = 0;
 
-    while (i < line.length) {
-      const ch = line[i];
+    while (i < input.length) {
+      const ch = input[i];
 
-      if (ch === '`') {
-        let tickCount = 1;
-        while (line[i + tickCount] === '`') tickCount += 1;
-        const fence = '`'.repeat(tickCount);
-        const end = line.indexOf(fence, i + tickCount);
-        if (end !== -1) {
-          result += line.slice(i, end + tickCount);
-          i = end + tickCount;
-          continue;
-        }
-      }
-
-      if (ch === '[' && !isEscaped(line, i) && line[i - 1] !== '!') {
-        const textEnd = parseBracketText(line, i);
-        if (textEnd !== null && line[textEnd + 1] === '(') {
-          const urlEnd = parseParenText(line, textEnd + 1);
+      if (ch === '[' && !isEscaped(input, i)) {
+        const textEnd = parseBracketText(input, i);
+        if (textEnd !== null && input[textEnd + 1] === '(') {
+          const urlEnd = parseParenText(input, textEnd + 1);
           if (urlEnd !== null) {
-            const whole = line.slice(i, urlEnd + 1);
-            const inner = line.slice(textEnd + 2, urlEnd);
-            const trimmed = inner.trim();
-
-            if (!trimmed) {
-              result += whole;
-              i = urlEnd + 1;
-              continue;
-            }
-
-            if (/\s$/.test(inner)) {
-              result += whole;
-              i = urlEnd + 1;
-              continue;
-            }
-
-            result += `${line.slice(i, textEnd + 2)}${inner} )`;
+            const inner = input.slice(textEnd + 2, urlEnd);
+            result += input.slice(i, textEnd + 2) + appendTrailingSpace(inner) + ')';
             i = urlEnd + 1;
             continue;
           }
@@ -153,42 +127,6 @@
     }
 
     return result;
-  }
-
-  function transformMarkdownLinks(input) {
-    if (!input) return input;
-
-    const lines = input.split('\n');
-    const out = [];
-    let inFence = false;
-    let currentFenceChar = null;
-
-    for (const line of lines) {
-      const fenceChar = isFenceStart(line);
-      if (fenceChar) {
-        if (!inFence) {
-          inFence = true;
-          currentFenceChar = fenceChar;
-          out.push(line);
-          continue;
-        }
-        if (currentFenceChar === fenceChar) {
-          inFence = false;
-          currentFenceChar = null;
-          out.push(line);
-          continue;
-        }
-      }
-
-      if (inFence) {
-        out.push(line);
-        continue;
-      }
-
-      out.push(transformInlineMarkdownLine(line));
-    }
-
-    return out.join('\n');
   }
 
   function getEditorText(editor) {
